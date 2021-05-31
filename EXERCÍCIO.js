@@ -27,44 +27,18 @@ function createColumnsObj(columns) {
 	return columnsObj;
 };
 
-// Exercício 1
+function DatabaseError(statement, message) {
+	this.statement = statement;
+	this.message = message;
+}
+
+// Exercício 4
 
 console.log(`
-==§== Exercício 1 ==§==
+==§== Exercício 4 ==§==
 `);
 
-let tableName_1 = getTableName(cmd);
-let columns_1 = getColumns(cmd);
-
-console.log(tableName_1);
-console.log(columns_1);
-
-// Exercício 2
-
-console.log(`
-==§== Exercício 2 ==§==
-`);
-
-let columnsObj_2 = createColumnsObj(columns_1);
-
-let database_2 = {
-	tables: {
-		[tableName_1]: {
-			columns: columnsObj_2,
-			data: []
-		}
-	}
-};
-
-console.log(JSON.stringify(database_2, null, '  '));
-
-// Exercício 3
-
-console.log(`
-==§== Exercício 3 ==§==
-`);
-
-let database_3 = {
+let database_4 = {
 	createTable(cmd) {
 		this.tables = {};
 
@@ -80,11 +54,18 @@ let database_3 = {
 		}
 	},
 	execute(cmd) {
-		if (cmd.startsWith('create table'))
-			this.createTable(cmd);
+		if (cmd.startsWith('create table')) {
+			return this.createTable(cmd);
+		} else {
+			throw new DatabaseError(cmd, `Syntax error: '${cmd}'`);
+		};
 	}
 };
 
-database_3.execute(cmd);
-console.log(JSON.stringify(database_3, null, '  '));
-
+try {
+	database_4.execute('create table author (id number, name string, age number, city string, state string, country string)');
+	//database_4.execute('select id, name from author');
+	console.log(JSON.stringify(database_4, undefined, 2));
+} catch (e) {
+	console.log(e.message);
+}
