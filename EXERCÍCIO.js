@@ -19,6 +19,18 @@ function parseInsertSQL(cmd) {
 	return { tableName, columns, values }
 }
 
+function parseSelectSQL(cmd) {
+	const regExp = /select (?<columns>.*) from (?<tableName>\w+)( where (?<columnWhere>\w+) = (?<valueWhere>\w+))?/;
+	const result = regExp.exec(cmd);
+
+	const tableName = result.groups.tableName
+	const columns = result.groups.columns.split(', ');
+	const columnWhere = result.groups.columnWhere;
+	const valueWhere = result.groups.valueWhere;
+
+	return { tableName, columns, columnWhere, valueWhere }
+}
+
 function createColumnsObj(columns) {
 	const columnsObj = {};
 	for (const column of columns) {
@@ -33,13 +45,13 @@ function DatabaseError(statement, message) {
 	this.message = message;
 }
 
-// Exercício 5
+// Exercício 6
 
 console.log(`
-==§== Exercício 5 ==§==
+==§== Exercício 6 ==§==
 `);
 
-const database_5 = {
+const database_6 = {
 	createTable(cmd) {
 		const { tableName, columns } = parseCreateSQL(cmd);
 		this.tables = {
@@ -55,11 +67,29 @@ const database_5 = {
 		columns.forEach((_, index) => { row[columns[index]] = values[index]; });
 		this.tables[tableName].data.push(row);
 	},
+	select(cmd) {
+		const { tableName, columns, columnWhere, valueWhere } = parseSelectSQL(cmd);
+		return this.tables[tableName].data
+			.filter(row => {
+				if (columnWhere === undefined || valueWhere === undefined || row[columnWhere] === valueWhere)
+					return true;
+				else
+					return false;
+			})
+			.map( row =>{
+				return columns.reduce((resultRow, column) => {
+					resultRow[column] = row[column];
+					return resultRow
+				}, {})
+			})
+	},
 	execute(cmd) {
 		if (cmd.startsWith('create table')) {
 			return this.createTable(cmd);
 		} else if (cmd.startsWith('insert into')) {
 			return this.insert(cmd);
+		} else if (cmd.startsWith('select')) {
+			return this.select(cmd);
 		} else {
 			throw new DatabaseError(cmd, `Syntax error: '${cmd}'`);
 		};
@@ -67,12 +97,12 @@ const database_5 = {
 };
 
 try {
-	database_5.execute("create table author (id number, name string, age number, city string, state string, country string)");
-	database_5.execute("insert into author (id, name, age) values (1, Douglas Crockford, 62)");
-	database_5.execute("insert into author (id, name, age) values (2, Linus Torvalds, 47)");
-	database_5.execute("insert into author (id, name, age) values (3, Martin Fowler, 54)");
-
-	console.log(JSON.stringify(database_5, undefined, 2));
+	database_6.execute("create table author (id number, name string, age number, city string, state string, country string)");
+	database_6.execute("insert into author (id, name, age) values (1, Douglas Crockford, 62)");
+	database_6.execute("insert into author (id, name, age) values (2, Linus Torvalds, 47)");
+	database_6.execute("insert into author (id, name, age) values (3, Martin Fowler, 54)");
+	console.log(JSON.stringify(database_6.execute("select name, age from author"), undefined, "  "));
+	console.log(JSON.stringify(database_6.execute("select name, age from author where id = 1"), undefined, "  "));
 } catch (e) {
 	console.log(e.message);
 }
