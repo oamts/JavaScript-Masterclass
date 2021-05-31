@@ -1,50 +1,53 @@
-function Parser() {
-	this.commands = new Map([
-		['createTable', /create table (\w+) \((.*)\)/],
-		['insert', /insert into (?<tableName>\w+) \((?<columns>.*?)\) values \((?<values>.*?)\)/],
-		['select', /select (?<columns>.*) from (?<tableName>\w+)( where (?<columnWhere>\w+) = (?<valueWhere>\w+))?/],
-		['delete', /delete from (?<tableName>\w+)( where (?<columnWhere>\w+) = (?<valueWhere>([\w ]+)))?/],
-	]);
-	this.parse = function (statement) {
+class Parser {
+	constructor() {
+		this.commands = new Map([
+			['createTable', /create table (\w+) \((.*)\)/],
+			['insert', /insert into (?<tableName>\w+) \((?<columns>.*?)\) values \((?<values>.*?)\)/],
+			['select', /select (?<columns>.*) from (?<tableName>\w+)( where (?<columnWhere>\w+) = (?<valueWhere>\w+))?/],
+			['delete', /delete from (?<tableName>\w+)( where (?<columnWhere>\w+) = (?<valueWhere>([\w ]+)))?/],
+		]);
+	}
+
+	parse(statement) {
 		for (let [command, regexp] of this.commands) {
 			const parsedStatement = statement.match(regexp);
 			if (parsedStatement)
-				return { command, parsedStatement }
+				return { command, parsedStatement };
 		}
+		return {};
 	};
 }
 
-function createColumnsObj(columns) {
-	const columnsObj = {};
-	for (const column of columns) {
-		const data = column.split(' ');
-		columnsObj[data[0]] = data[1];
+class DatabaseError {
+	constructor(statement, message) {
+		this.statement = statement;
+		this.message = message;
 	}
-	return columnsObj;
-};
-
-function DatabaseError(statement, message) {
-	this.statement = statement;
-	this.message = message;
 }
 
-// Exercício 8
+class Database {
+	constructor(){
+		this.tables = {};
+		this.parser = new Parser();
+	}
 
-console.log(`
-==§== Exercício 8 ==§==
-`);
-
-const database_8 = {
 	createTable(parsedStatement) {
 		const tableName = parsedStatement[1];
-		const columns = createColumnsObj(parsedStatement[2].split(', '))
+		const columns = parsedStatement[2].split(', ')
+		const columnsObj = {};
+		for (const column of columns) {
+			const data = column.split(' ');
+			columnsObj[data[0]] = data[1];
+		}
+
 		this.tables = {
 			[tableName]: {
-				columns: columns,
+				columns: columnsObj,
 				data: []
 			}
 		}
-	},
+	}
+
 	insert(parsedStatement) {
 		const tableName = parsedStatement.groups.tableName
 		const columns = parsedStatement.groups.columns.split(', ');
@@ -53,7 +56,8 @@ const database_8 = {
 		const row = {};
 		columns.forEach((_, index) => { row[columns[index]] = values[index]; });
 		this.tables[tableName].data.push(row);
-	},
+	}
+
 	select(parsedStatement) {
 		const tableName = parsedStatement.groups.tableName
 		const columns = parsedStatement.groups.columns.split(', ');
@@ -73,13 +77,14 @@ const database_8 = {
 					return resultRow
 				}, {})
 			})
-	},
+	}
+
 	delete(parsedStatement) {
 		const { tableName, columnWhere, valueWhere } = parsedStatement.groups;
 		this.tables[tableName].data = this.tables[tableName].data
 			.filter(row => row[columnWhere] !== valueWhere)
-	},
-	parser: new Parser(),
+	}
+	
 	execute(statement) {
 		const { command, parsedStatement } = this.parser.parse(statement);
 		if (!parsedStatement)
@@ -89,14 +94,13 @@ const database_8 = {
 };
 
 try {
-	database_8.execute("create table author (id number, name string, age number, city string, state string, country string)");
-	database_8.execute("insert into author (id, name, age) values (1, Douglas Crockford, 62)");
-	database_8.execute("insert into author (id, name, age) values (2, Linus Torvalds, 47)");
-	database_8.execute("insert into author (id, name, age) values (3, Martin Fowler, 54)");
-	console.log(JSON.stringify(database_8, undefined, "  "));
-	database_8.execute("delete from author where id = 2");
-	console.log(JSON.stringify(database_8, undefined, "  "));
-	console.log(database_8.execute("select name, age from author"));
+	let database = new Database();
+	database.execute("create table author (id number, name string, age number, city string, state string, country string)");
+	database.execute("insert into author (id, name, age) values (1, Douglas Crockford, 62)");
+	database.execute("insert into author (id, name, age) values (2, Linus Torvalds, 47)");
+	database.execute("insert into author (id, name, age) values (3, Martin Fowler, 54)");
+	database.execute("delete from author where id = 2");
+	console.log(JSON.stringify(database.execute("select name, age from author")));
 
 } catch (e) {
 	console.log(e.message);
