@@ -16,7 +16,7 @@ function parseInsertSQL(cmd) {
 	const columns = result.groups.columns.split(', ');
 	const values = result.groups.values.split(', ');
 
-	return { tableName, columns, values }
+	return { tableName, columns, values };
 }
 
 function parseSelectSQL(cmd) {
@@ -28,7 +28,18 @@ function parseSelectSQL(cmd) {
 	const columnWhere = result.groups.columnWhere;
 	const valueWhere = result.groups.valueWhere;
 
-	return { tableName, columns, columnWhere, valueWhere }
+	return { tableName, columns, columnWhere, valueWhere };
+}
+
+function parseDeleteSQL(cmd) {
+	const regExp = /delete from (?<tableName>\w+)( where (?<columnWhere>\w+) = (?<valueWhere>([\w ]+)))?/;
+	const result = regExp.exec(cmd);
+
+	const tableName = result.groups.tableName
+	const columnWhere = result.groups.columnWhere;
+	const valueWhere = result.groups.valueWhere;
+
+	return { tableName, columnWhere, valueWhere };
 }
 
 function createColumnsObj(columns) {
@@ -45,13 +56,13 @@ function DatabaseError(statement, message) {
 	this.message = message;
 }
 
-// Exercício 6
+// Exercício 7
 
 console.log(`
-==§== Exercício 6 ==§==
+==§== Exercício 7 ==§==
 `);
 
-const database_6 = {
+const database_7 = {
 	createTable(cmd) {
 		const { tableName, columns } = parseCreateSQL(cmd);
 		this.tables = {
@@ -76,12 +87,17 @@ const database_6 = {
 				else
 					return false;
 			})
-			.map( row =>{
+			.map(row => {
 				return columns.reduce((resultRow, column) => {
 					resultRow[column] = row[column];
 					return resultRow
 				}, {})
 			})
+	},
+	delete(cmd) {
+		const { tableName, columnWhere, valueWhere } = parseDeleteSQL(cmd);
+		this.tables[tableName].data = this.tables[tableName].data
+			.filter(row => row[columnWhere] !== valueWhere)
 	},
 	execute(cmd) {
 		if (cmd.startsWith('create table')) {
@@ -90,6 +106,8 @@ const database_6 = {
 			return this.insert(cmd);
 		} else if (cmd.startsWith('select')) {
 			return this.select(cmd);
+		} else if (cmd.startsWith('delete from')) {
+			return this.delete(cmd);
 		} else {
 			throw new DatabaseError(cmd, `Syntax error: '${cmd}'`);
 		};
@@ -97,12 +115,13 @@ const database_6 = {
 };
 
 try {
-	database_6.execute("create table author (id number, name string, age number, city string, state string, country string)");
-	database_6.execute("insert into author (id, name, age) values (1, Douglas Crockford, 62)");
-	database_6.execute("insert into author (id, name, age) values (2, Linus Torvalds, 47)");
-	database_6.execute("insert into author (id, name, age) values (3, Martin Fowler, 54)");
-	console.log(JSON.stringify(database_6.execute("select name, age from author"), undefined, "  "));
-	console.log(JSON.stringify(database_6.execute("select name, age from author where id = 1"), undefined, "  "));
+	database_7.execute("create table author (id number, name string, age number, city string, state string, country string)");
+	database_7.execute("insert into author (id, name, age) values (1, Douglas Crockford, 62)");
+	database_7.execute("insert into author (id, name, age) values (2, Linus Torvalds, 47)");
+	database_7.execute("insert into author (id, name, age) values (3, Martin Fowler, 54)");
+	console.log(JSON.stringify(database_7.execute("select name, age from author"), undefined, "  "));
+	database_7.execute("delete from author where id = 2");
+	console.log(JSON.stringify(database_7.execute("select name, age from author"), undefined, "  "));
 } catch (e) {
 	console.log(e.message);
 }
