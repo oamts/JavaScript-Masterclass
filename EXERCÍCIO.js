@@ -1,45 +1,17 @@
-function parseCreateSQL(cmd) {
-	const regExp = /table (\w+) \((.*)\)/;
-	const result = regExp.exec(cmd);
-
-	const tableName = result[1];
-	const columnsObj = createColumnsObj(result[2].split(', '))
-
-	return { tableName, columns: columnsObj };
-}
-
-function parseInsertSQL(cmd) {
-	const regExp = /into (?<tableName>\w+) \((?<columns>.*?)\) values \((?<values>.*?)\)/;
-	const result = regExp.exec(cmd);
-
-	const tableName = result.groups.tableName
-	const columns = result.groups.columns.split(', ');
-	const values = result.groups.values.split(', ');
-
-	return { tableName, columns, values };
-}
-
-function parseSelectSQL(cmd) {
-	const regExp = /select (?<columns>.*) from (?<tableName>\w+)( where (?<columnWhere>\w+) = (?<valueWhere>\w+))?/;
-	const result = regExp.exec(cmd);
-
-	const tableName = result.groups.tableName
-	const columns = result.groups.columns.split(', ');
-	const columnWhere = result.groups.columnWhere;
-	const valueWhere = result.groups.valueWhere;
-
-	return { tableName, columns, columnWhere, valueWhere };
-}
-
-function parseDeleteSQL(cmd) {
-	const regExp = /delete from (?<tableName>\w+)( where (?<columnWhere>\w+) = (?<valueWhere>([\w ]+)))?/;
-	const result = regExp.exec(cmd);
-
-	const tableName = result.groups.tableName
-	const columnWhere = result.groups.columnWhere;
-	const valueWhere = result.groups.valueWhere;
-
-	return { tableName, columnWhere, valueWhere };
+function Parser() {
+	this.commands = new Map([
+		['createTable', /create table (\w+) \((.*)\)/],
+		['insert', /insert into (?<tableName>\w+) \((?<columns>.*?)\) values \((?<values>.*?)\)/],
+		['select', /select (?<columns>.*) from (?<tableName>\w+)( where (?<columnWhere>\w+) = (?<valueWhere>\w+))?/],
+		['delete', /delete from (?<tableName>\w+)( where (?<columnWhere>\w+) = (?<valueWhere>([\w ]+)))?/],
+	]);
+	this.parse = function (statement) {
+		for (let [command, regexp] of this.commands) {
+			const parsedStatement = statement.match(regexp);
+			if (parsedStatement)
+				return { command, parsedStatement }
+		}
+	};
 }
 
 function createColumnsObj(columns) {
@@ -56,15 +28,16 @@ function DatabaseError(statement, message) {
 	this.message = message;
 }
 
-// Exercício 7
+// Exercício 8
 
 console.log(`
-==§== Exercício 7 ==§==
+==§== Exercício 8 ==§==
 `);
 
-const database_7 = {
-	createTable(cmd) {
-		const { tableName, columns } = parseCreateSQL(cmd);
+const database_8 = {
+	createTable(parsedStatement) {
+		const tableName = parsedStatement[1];
+		const columns = createColumnsObj(parsedStatement[2].split(', '))
 		this.tables = {
 			[tableName]: {
 				columns: columns,
@@ -72,14 +45,21 @@ const database_7 = {
 			}
 		}
 	},
-	insert(cmd) {
-		const { tableName, columns, values } = parseInsertSQL(cmd);
+	insert(parsedStatement) {
+		const tableName = parsedStatement.groups.tableName
+		const columns = parsedStatement.groups.columns.split(', ');
+		const values = parsedStatement.groups.values.split(', ');
+
 		const row = {};
 		columns.forEach((_, index) => { row[columns[index]] = values[index]; });
 		this.tables[tableName].data.push(row);
 	},
-	select(cmd) {
-		const { tableName, columns, columnWhere, valueWhere } = parseSelectSQL(cmd);
+	select(parsedStatement) {
+		const tableName = parsedStatement.groups.tableName
+		const columns = parsedStatement.groups.columns.split(', ');
+		const columnWhere = parsedStatement.groups.columnWhere;
+		const valueWhere = parsedStatement.groups.valueWhere;
+
 		return this.tables[tableName].data
 			.filter(row => {
 				if (columnWhere === undefined || valueWhere === undefined || row[columnWhere] === valueWhere)
@@ -94,34 +74,30 @@ const database_7 = {
 				}, {})
 			})
 	},
-	delete(cmd) {
-		const { tableName, columnWhere, valueWhere } = parseDeleteSQL(cmd);
+	delete(parsedStatement) {
+		const { tableName, columnWhere, valueWhere } = parsedStatement.groups;
 		this.tables[tableName].data = this.tables[tableName].data
 			.filter(row => row[columnWhere] !== valueWhere)
 	},
-	execute(cmd) {
-		if (cmd.startsWith('create table')) {
-			return this.createTable(cmd);
-		} else if (cmd.startsWith('insert into')) {
-			return this.insert(cmd);
-		} else if (cmd.startsWith('select')) {
-			return this.select(cmd);
-		} else if (cmd.startsWith('delete from')) {
-			return this.delete(cmd);
-		} else {
-			throw new DatabaseError(cmd, `Syntax error: '${cmd}'`);
-		};
+	parser: new Parser(),
+	execute(statement) {
+		const { command, parsedStatement } = this.parser.parse(statement);
+		if (!parsedStatement)
+			throw new DatabaseError(statement, `Syntax error: '${statement}'`);
+		return this[command](parsedStatement);
 	}
 };
 
 try {
-	database_7.execute("create table author (id number, name string, age number, city string, state string, country string)");
-	database_7.execute("insert into author (id, name, age) values (1, Douglas Crockford, 62)");
-	database_7.execute("insert into author (id, name, age) values (2, Linus Torvalds, 47)");
-	database_7.execute("insert into author (id, name, age) values (3, Martin Fowler, 54)");
-	console.log(JSON.stringify(database_7.execute("select name, age from author"), undefined, "  "));
-	database_7.execute("delete from author where id = 2");
-	console.log(JSON.stringify(database_7.execute("select name, age from author"), undefined, "  "));
+	database_8.execute("create table author (id number, name string, age number, city string, state string, country string)");
+	database_8.execute("insert into author (id, name, age) values (1, Douglas Crockford, 62)");
+	database_8.execute("insert into author (id, name, age) values (2, Linus Torvalds, 47)");
+	database_8.execute("insert into author (id, name, age) values (3, Martin Fowler, 54)");
+	console.log(JSON.stringify(database_8, undefined, "  "));
+	database_8.execute("delete from author where id = 2");
+	console.log(JSON.stringify(database_8, undefined, "  "));
+	console.log(database_8.execute("select name, age from author"));
+
 } catch (e) {
 	console.log(e.message);
 }
