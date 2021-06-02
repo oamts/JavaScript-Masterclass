@@ -1,22 +1,21 @@
 import Database from './database.mjs';
 
 console.time('db');
-let database = new Database();
-database
-	.execute("create table author (id number, name string, age number, city string, state string, country string)")
-	.then(db => {
-		return Promise.all([
-			db.execute("insert into author (id, name, age) values (1, Douglas Crockford, 62)"),
-			db.execute("insert into author (id, name, age) values (2, Linus Torvalds, 47)"),
-			db.execute("insert into author (id, name, age) values (3, Martin Fowler, 54)")
+(async function () {
+	try {
+		const database = new Database();
+		await database.execute("create table author (id number, name string, age number, city string, state string, country string)");
+		await Promise.all([
+			database.execute("insert into author (id, name, age) values (1, Douglas Crockford, 62)"),
+			database.execute("insert into author (id, name, age) values (2, Linus Torvalds, 47)"),
+			database.execute("insert into author (id, name, age) values (3, Martin Fowler, 54)")
 		]);
-	})
-	.then(([db]) => db.execute("select name, age from author"))
-	.then(data => console.log(data))
-	.finally(() => {
+		const selectResult = await database.execute("select name, age from author");
+		console.log(JSON.stringify(selectResult, undefined, "  "));
+	} catch (e) {
+		console.log(e.message);
+	} finally{
 		console.timeEnd('db');
-	})
-	.catch(e => {
-		console.log(e.message)
-	});
+	}
+})();
 
