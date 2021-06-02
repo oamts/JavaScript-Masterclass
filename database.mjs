@@ -2,7 +2,7 @@ import DatabaseError from './databaseError.mjs'
 import Parser from './parser.mjs'
 
 export default class Database {
-	constructor(){
+	constructor() {
 		this.tables = {};
 		this.parser = new Parser();
 	}
@@ -22,6 +22,7 @@ export default class Database {
 				data: []
 			}
 		}
+		return this;
 	}
 
 	insert(parsedStatement) {
@@ -32,6 +33,7 @@ export default class Database {
 		const row = {};
 		columns.forEach((_, index) => { row[columns[index]] = values[index]; });
 		this.tables[tableName].data.push(row);
+		return this;
 	}
 
 	select(parsedStatement) {
@@ -60,11 +62,16 @@ export default class Database {
 		this.tables[tableName].data = this.tables[tableName].data
 			.filter(row => row[columnWhere] !== valueWhere)
 	}
-	
+
 	execute(statement) {
-		const { command, parsedStatement } = this.parser.parse(statement);
-		if (!parsedStatement)
-			throw new DatabaseError(statement, `Syntax error: '${statement}'`);
-		return this[command](parsedStatement);
+		return new Promise( (resolve, reject) => {
+			setTimeout(() => {
+				const { command, parsedStatement } = this.parser.parse(statement);
+				if (!parsedStatement){
+					return reject(new DatabaseError(statement, `Syntax error: '${statement}'`));
+				}
+				resolve(this[command](parsedStatement));
+			}, 1000);
+		});
 	}
 };
